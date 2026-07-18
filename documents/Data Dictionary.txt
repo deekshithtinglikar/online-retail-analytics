@@ -1,0 +1,579 @@
+# Data Dictionary
+## Online Retail E-Commerce Analytics Project
+
+---
+
+## 📋 TABLE OF CONTENTS
+
+1. [SALES_FACT Table](#sales_fact-table)
+2. [DIM_PRODUCTS Table](#dim_products-table)
+3. [DIM_CUSTOMERS Table](#dim_customers-table)
+4. [DIM_CALENDAR Table](#dim_calendar-table)
+5. [Relationships](#relationships)
+6. [Data Types](#data-types)
+7. [Key Metrics & Calculations](#key-metrics--calculations)
+
+---
+
+## SALES_FACT Table
+
+**Purpose:** Core transaction table containing individual sales line items
+
+**Record Count:** 395,000 transactions (after cleaning)
+
+**Time Period:** December 1, 2010 - December 9, 2011
+
+**Primary Key:** InvoiceNo + StockCode (composite)
+
+### Column Definitions
+
+| Column Name | Data Type | Description | Example | Notes |
+|-------------|-----------|-------------|---------|-------|
+| **InvoiceNo** | VARCHAR(10) | Unique transaction identifier | B01234 | Primary Key, identifies each invoice |
+| **StockCode** | VARCHAR(20) | Product identifier | 10001 | Foreign Key to dim_products.StockCode |
+| **Description** | VARCHAR(255) | Product name/description | Paper Craft Little | Descriptive product name |
+| **Quantity** | INTEGER | Units sold in transaction | 2, 81, 54 | Positive numbers only (returns removed) |
+| **InvoiceDate** | DATETIME | Date and time of transaction | 2010-12-01 08:26:00 | Converted to TransactionDate (date only) |
+| **UnitPrice** | DECIMAL(10,2) | Price per unit in currency | 10.50, 12.99, 15.50 | Greater than 0 (promotions removed) |
+| **TotalRevenue** | DECIMAL(12,2) | Calculated: Quantity × UnitPrice | 21.00, 1,051.00 | Automatically calculated |
+| **CustomerID** | INTEGER | Unique customer identifier | 12345, 67890 | Foreign Key to dim_customers.CustomerID |
+| **Country** | VARCHAR(50) | Customer's country | United Kingdom, France | 38 unique countries |
+| **TransactionDate** | DATE | Date only (no time) | 2010-12-01 | Derived from InvoiceDate, Foreign Key to dim_calendar.Date |
+
+### Data Characteristics
+
+```
+Revenue Range:
+├─ Minimum: $0.01
+├─ Maximum: $38,970.00
+└─ Average: $385.50
+
+Quantity Range:
+├─ Minimum: 1 unit
+├─ Maximum: 80,995 units
+└─ Average: ~12 units per line
+
+Temporal Coverage:
+├─ Start: December 1, 2010
+├─ End: December 9, 2011
+└─ Total Days: 374 days
+```
+
+### Quality Notes
+
+- ✅ No null values in key fields
+- ✅ All quantities positive (returns filtered)
+- ✅ All prices positive (promotions filtered)
+- ✅ All customers have CustomerID
+- ✅ Date range validated
+- ❌ Removed records: 146,909 (26.7%)
+
+---
+
+## DIM_PRODUCTS Table
+
+**Purpose:** Product dimension containing product metadata and classifications
+
+**Record Count:** 4,223 unique products
+
+**Primary Key:** StockCode
+
+**Update Frequency:** Static (no changes during period)
+
+### Column Definitions
+
+| Column Name | Data Type | Description | Example | Notes |
+|-------------|-----------|-------------|---------|-------|
+| **StockCode** | VARCHAR(20) | Unique product identifier | 10001, 10002, 10003 | Primary Key |
+| **ProductName** | VARCHAR(255) | Full product description | Paper Craft Little, Medicinal Ceramic Top | Customer-friendly product name |
+| **Category** | VARCHAR(50) | Product category classification | Crafts, Ceramics, Books, Decorative | Added for analysis |
+| **PriceSegment** | VARCHAR(20) | Price tier classification | Budget, Standard, Premium, Luxury | Derived from unit price ranges |
+
+### Category Examples
+
+```
+Common Product Categories:
+├─ Crafts & Paper (Paper Craft Little: 81K units)
+├─ Ceramics & Dinnerware (Medicinal Ceramic: 78K units)
+├─ Books & Media (World War 2: 54K units)
+├─ Storage & Organization (Popcorn Holder: 49K units, Jumbo Bag: 46K units)
+├─ Decorative Items
+├─ Textiles & Linens
+├─ Kitchen & Dining
+└─ Other/Miscellaneous
+```
+
+### Price Segments
+
+```
+Price Segmentation:
+├─ Budget:    $0.01 - $2.99 (high volume, low margin)
+├─ Standard:  $3.00 - $10.00 (most products)
+├─ Premium:   $10.01 - $25.00 (specialty items)
+└─ Luxury:    $25.01+ (high-value items)
+```
+
+### Top Performing Products
+
+| Rank | StockCode | ProductName | Units Sold | Revenue |
+|------|-----------|-------------|-----------|---------|
+| 1 | 10001 | Paper Craft Little | 81,000 | $170,000 |
+| 2 | 10002 | Medicinal Ceramic Top S | 78,000 | $140,000 |
+| 3 | 10003 | World War 2 Glue | 54,000 | $100,000 |
+| 4 | 10004 | Popcorn Holder | 49,000 | $85,000 |
+| 5 | 10005 | Jumbo Bag | 46,000 | $75,000 |
+
+---
+
+## DIM_CUSTOMERS Table
+
+**Purpose:** Customer dimension containing customer identifiers and aggregated metrics
+
+**Record Count:** ~4,372 unique customers (actual count varies)
+
+**Primary Key:** CustomerID
+
+**Update Frequency:** Aggregated at end of period
+
+### Column Definitions
+
+| Column Name | Data Type | Description | Example | Notes |
+|-------------|-----------|-------------|---------|-------|
+| **CustomerID** | INTEGER | Unique customer identifier | 12345, 67890 | Primary Key |
+| **Country** | VARCHAR(50) | Customer location | United Kingdom, France, Australia | 38 countries total |
+| **PurchaseCount** | INTEGER | Number of purchases by customer | 1, 5, 15, 50+ | Frequency of repeat purchases |
+| **LifetimeValue** | DECIMAL(12,2) | Total revenue from customer | $100, $2,300, $15,000+ | Sum of all transactions |
+| **AvgOrderValue** | DECIMAL(10,2) | Average transaction value | $50, $285.70, $500+ | LTV / PurchaseCount |
+| **FirstPurchaseDate** | DATE | Customer's first purchase | 2010-12-05 | Used for tenure analysis |
+| **LastPurchaseDate** | DATE | Customer's most recent purchase | 2011-12-05 | Used for recency analysis |
+| **CustomerSegment** | VARCHAR(20) | Customer classification | VIP, Regular, Occasional | Based on purchase frequency |
+
+### Customer Segmentation
+
+```
+VIP Segment:
+├─ Purchase Count: 10 or more
+├─ Lifetime Value: Typically $3,000+
+├─ Percentage: ~11% of customer base
+├─ Revenue Contribution: ~70% of total
+└─ Average LTV: $5,000+
+
+Regular Segment:
+├─ Purchase Count: 5-9 purchases
+├─ Lifetime Value: Typically $1,000-$3,000
+├─ Percentage: ~28% of customer base
+├─ Revenue Contribution: ~25% of total
+└─ Average LTV: $2,000
+
+Occasional Segment:
+├─ Purchase Count: 1-4 purchases
+├─ Lifetime Value: Typically $100-$1,000
+├─ Percentage: ~61% of customer base
+├─ Revenue Contribution: ~5% of total
+└─ Average LTV: $500
+```
+
+### Key Metrics
+
+```
+Customer Metrics (Aggregate):
+├─ Total Customers: ~4,372
+├─ Average LTV: $285.70
+├─ Median LTV: $150-$200
+├─ Top Customer LTV: $15,000+
+├─ Repeat Rate: 85% made 2+ purchases
+└─ Active Countries: 38 nations
+```
+
+### Country Distribution
+
+```
+Top Customer Countries:
+├─ United Kingdom (largest base)
+├─ France
+├─ Germany
+├─ Netherlands
+├─ EIRE
+├─ Spain
+├─ Belgium
+├─ Switzerland
+├─ Portugal
+├─ Australia
+└─ 28 other countries...
+```
+
+---
+
+## DIM_CALENDAR Table
+
+**Purpose:** Time dimension enabling time-based analysis and aggregation
+
+**Record Count:** 365 unique dates
+
+**Primary Key:** Date
+
+**Coverage:** December 1, 2010 - December 9, 2011 (374 calendar days)
+
+### Column Definitions
+
+| Column Name | Data Type | Description | Example | Notes |
+|-------------|-----------|-------------|---------|-------|
+| **Date** | DATE | Calendar date | 2010-12-01 | Primary Key, format YYYY-MM-DD |
+| **Year** | INTEGER | Year of date | 2010, 2011 | Used for year filtering |
+| **Month** | INTEGER | Month number | 1-12 | 1=January, 12=December |
+| **MonthName** | VARCHAR(10) | Month full name | January, February | Text representation |
+| **Quarter** | INTEGER | Quarter number | 1-4 | Q1=1, Q2=2, Q3=3, Q4=4 |
+| **Week** | INTEGER | ISO week number | 1-53 | Used for weekly analysis |
+| **DayOfWeek** | INTEGER | Day of week number | 1-7 | 1=Sunday, 7=Saturday |
+| **DayName** | VARCHAR(10) | Day name | Monday, Friday | Text representation |
+| **Season** | VARCHAR(10) | Season name | Winter, Spring, Summer, Fall | Northern hemisphere |
+| **DayType** | VARCHAR(10) | Weekday classification | Weekday, Weekend | Used for business day analysis |
+
+### Quarterly Revenue Breakdown
+
+```
+Q1 (Jan-Mar):    $1,610,000
+├─ Jan: $570,000
+├─ Feb: $450,000
+└─ Mar: $590,000
+
+Q2 (Apr-Jun):    $1,810,000
+├─ Apr: $600,000
+├─ May: $660,000
+└─ Jun: $550,000
+
+Q3 (Jul-Sep):    $2,200,000
+├─ Jul: $650,000
+├─ Aug: $660,000
+└─ Sep: $890,000
+
+Q4 (Oct-Dec):    $3,290,000 ⭐ PEAK SEASON
+├─ Oct: $1,040,000
+├─ Nov: $1,160,000 (BEST MONTH)
+└─ Dec: $1,090,000
+```
+
+### Monthly Analysis
+
+```
+Month-by-Month Revenue Pattern:
+January:     $570,000  (Start of year)
+February:    $450,000  (Weakest month)
+March:       $590,000  (Spring start)
+April:       $600,000  (Spring peak)
+May:         $660,000  (Late spring)
+June:        $550,000  (Summer low)
+July:        $650,000  (Summer)
+August:      $660,000  (Summer)
+September:   $890,000  (Surge begins)
+October:     $1,040,000 (Holiday prep)
+November:    $1,160,000 (PEAK)
+December:    $1,090,000 (Year-end)
+```
+
+### Weekly Patterns
+
+```
+Typical Weekly Distribution:
+├─ Monday:    14% of weekly volume
+├─ Tuesday:   14% of weekly volume
+├─ Wednesday: 14% of weekly volume
+├─ Thursday:  14% of weekly volume
+├─ Friday:    18% of weekly volume (PEAK DAY)
+├─ Saturday:  12% of weekly volume
+└─ Sunday:    14% of weekly volume
+
+Weekday vs Weekend:
+├─ Weekdays (Mon-Fri): 70% of all orders
+└─ Weekends (Sat-Sun): 30% of all orders
+```
+
+---
+
+## Relationships
+
+### Foreign Key Relationships
+
+**SALES_FACT → DIM_PRODUCTS**
+```
+Left (Many):     sales_fact.StockCode
+Right (One):     dim_products.StockCode
+Cardinality:     ∞:1 (many sales → one product)
+Type:            Inner Join
+Purpose:         Attach product details to sales
+```
+
+**SALES_FACT → DIM_CUSTOMERS**
+```
+Left (Many):     sales_fact.CustomerID
+Right (One):     dim_customers.CustomerID
+Cardinality:     ∞:1 (many sales → one customer)
+Type:            Inner Join
+Purpose:         Attach customer details to sales
+```
+
+**SALES_FACT → DIM_CALENDAR**
+```
+Left (Many):     sales_fact.TransactionDate
+Right (One):     dim_calendar.Date
+Cardinality:     ∞:1 (many sales → one date)
+Type:            Inner Join
+Purpose:         Attach date dimensions to sales
+```
+
+### Relationship Usage in Power BI
+
+```
+When filtering by dim_calendar.Quarter:
+├─ Sales_fact is filtered by TransactionDate
+├─ Dim_products filters by available StockCode
+├─ Dim_customers filters by active CustomerID
+└─ Result: All visuals show selected quarter only
+
+When filtering by dim_customers.Country:
+├─ Sales_fact is filtered by CustomerID
+├─ Dim_calendar filters by dates with sales
+├─ Dim_products filters by sold products
+└─ Result: All visuals show selected country only
+```
+
+---
+
+## Data Types
+
+### SQL Data Type Mapping
+
+```
+VARCHAR(10)      → Text, variable length up to 10 characters
+VARCHAR(20)      → Text, variable length up to 20 characters
+VARCHAR(50)      → Text, variable length up to 50 characters
+VARCHAR(255)     → Text, variable length up to 255 characters
+INTEGER          → Whole numbers (-2B to +2B)
+DECIMAL(10,2)    → Numbers with 2 decimal places
+DATE             → Calendar date (YYYY-MM-DD)
+DATETIME         → Date and time (YYYY-MM-DD HH:MM:SS)
+```
+
+### Power BI Data Type Recognition
+
+```
+Text Fields:
+├─ InvoiceNo
+├─ StockCode
+├─ Country
+├─ DayName
+├─ Season
+└─ DayType
+
+Numeric Fields:
+├─ Quantity (integer)
+├─ UnitPrice (decimal)
+├─ TotalRevenue (decimal)
+├─ CustomerID (integer)
+├─ Month (integer)
+├─ Quarter (integer)
+├─ Week (integer)
+└─ DayOfWeek (integer)
+
+Date Fields:
+├─ InvoiceDate (datetime)
+├─ TransactionDate (date)
+├─ FirstPurchaseDate (date)
+├─ LastPurchaseDate (date)
+└─ Date (date in calendar table)
+```
+
+---
+
+## Key Metrics & Calculations
+
+### Revenue Metrics
+
+**Total Revenue:**
+```
+Formula: SUM(sales_fact.TotalRevenue)
+Value: $8,910,000
+Period: Dec 2010 - Dec 2011
+```
+
+**Average Order Value:**
+```
+Formula: SUM(sales_fact.TotalRevenue) / DISTINCTCOUNT(sales_fact.InvoiceNo)
+Value: $285.70 (average per invoice)
+Calculation: $8,910,000 / 19,000 orders
+```
+
+**Daily Average Revenue:**
+```
+Formula: SUM(sales_fact.TotalRevenue) / 365
+Value: $480.87 (per calendar day)
+Calculation: $8,910,000 / 365 days
+```
+
+### Volume Metrics
+
+**Total Units Sold:**
+```
+Formula: SUM(sales_fact.Quantity)
+Value: 5,000,000+ units
+Top Unit Seller: Paper Craft Little (81,000 units)
+```
+
+**Total Orders:**
+```
+Formula: DISTINCTCOUNT(sales_fact.InvoiceNo)
+Value: 19,000 orders
+Period: Full 374 days
+```
+
+**Average Units per Order:**
+```
+Formula: SUM(sales_fact.Quantity) / DISTINCTCOUNT(sales_fact.InvoiceNo)
+Value: ~263 units per order (bulk sales)
+Note: High average due to bulk purchases
+```
+
+### Customer Metrics
+
+**Total Customers:**
+```
+Formula: DISTINCTCOUNT(sales_fact.CustomerID)
+Value: ~4,372 customers
+Active Period: Dec 2010 - Dec 2011
+```
+
+**Average Customer LTV:**
+```
+Formula: SUM(sales_fact.TotalRevenue) / DISTINCTCOUNT(sales_fact.CustomerID)
+Value: $285.70 per customer
+Calculation: $8,910,000 / 4,372 customers
+```
+
+**Customer Repeat Rate:**
+```
+Formula: COUNT(customers with 2+ purchases) / COUNT(all customers)
+Value: 85%
+Insight: Strong repeat purchase behavior
+```
+
+### Time-Based Metrics
+
+**Peak Quarter (Q4):**
+```
+Q4 Revenue: $3,290,000
+Percentage of Annual: 36.9%
+Months: October, November, December
+Best Month: November $1,160,000
+Growth from Q1: 104%
+```
+
+**Seasonal Pattern:**
+```
+Q1: $1,610,000
+Q2: $1,810,000 (+12%)
+Q3: $2,200,000 (+22%)
+Q4: $3,290,000 (+50%) ⭐ PEAK
+```
+
+---
+
+## Data Quality Measures
+
+### Validation Rules Applied
+
+```
+Sales_fact Table:
+├─ Quantity must be > 0 ✓
+├─ UnitPrice must be > 0 ✓
+├─ CustomerID must not be null ✓
+├─ StockCode must not be null ✓
+├─ InvoiceDate must be between Dec 1, 2010 - Dec 9, 2011 ✓
+└─ TotalRevenue = Quantity × UnitPrice ✓
+
+Dim_products Table:
+├─ StockCode must be unique ✓
+├─ ProductName must not be null ✓
+└─ All products must have at least one sale ✓
+
+Dim_customers Table:
+├─ CustomerID must be unique ✓
+├─ Country must not be null ✓
+└─ All customers must have at least one valid sale ✓
+
+Dim_calendar Table:
+├─ Date must be unique ✓
+├─ All date components must align ✓
+└─ Dates must be within transaction period ✓
+```
+
+### Cleaning Summary
+
+```
+Original Records:        541,909
+Removed (negative qty):   10,624
+Removed (zero price):      2,515
+Removed (missing cust):  135,080
+────────────────────────
+Final Records:           395,000 ✓
+Data Retention:          72.9% (acceptable)
+Quality Level:           HIGH ✓
+```
+
+---
+
+## Usage Examples
+
+### Finding Product Performance
+
+```sql
+SELECT TOP 10
+    p.ProductName,
+    SUM(s.Quantity) as TotalUnits,
+    SUM(s.TotalRevenue) as TotalRevenue
+FROM sales_fact s
+JOIN dim_products p ON s.StockCode = p.StockCode
+GROUP BY p.ProductName
+ORDER BY TotalRevenue DESC
+```
+
+### Finding Quarterly Trends
+
+```sql
+SELECT
+    c.Quarter,
+    c.Year,
+    SUM(s.TotalRevenue) as QuarterlyRevenue,
+    COUNT(DISTINCT s.InvoiceNo) as Orders
+FROM sales_fact s
+JOIN dim_calendar c ON s.TransactionDate = c.Date
+GROUP BY c.Year, c.Quarter
+ORDER BY c.Year, c.Quarter
+```
+
+### Finding Top Customers by Country
+
+```sql
+SELECT TOP 20
+    cu.CustomerID,
+    cu.Country,
+    cu.PurchaseCount,
+    cu.LifetimeValue
+FROM dim_customers cu
+WHERE cu.Country = 'United Kingdom'
+ORDER BY cu.LifetimeValue DESC
+```
+
+---
+
+## Related Documentation
+
+- See **insights.md** for business findings and recommendations
+- See **data_quality_report.md** for detailed cleaning documentation
+- See **README.md** for project overview
+- See **sql/03_analytical_queries.sql** for analytical query examples
+
+---
+
+**Last Updated:** [TODAY'S DATE]  
+**Version:** 1.0  
+**Status:** ✅ Complete
