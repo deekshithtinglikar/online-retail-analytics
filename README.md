@@ -233,7 +233,7 @@ online-retail-analytics/
 5. Practice modifying queries for different time periods
 
 ### Without Power BI
-View screenshots in `/powerbi-dashboards/` folder to see all 6 dashboard pages with actual metrics
+View screenshots in `/dashboards/` folder to see dashboard 
 
 
 ---
@@ -402,4 +402,3 @@ Have questions about the analysis? Want to discuss findings?
 
 **Thank you for exploring this project!**
 
-*Happy analyzing! 🎉*
